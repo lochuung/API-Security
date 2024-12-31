@@ -1,4 +1,5 @@
-version: '3.8'
+# Compose specification: https://docs.docker.com/compose/compose-file/
+# Using Compose format v3 (no version field needed)
 
 services:
   postgres:
@@ -15,7 +16,7 @@ services:
     networks:
       - security_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U secuser -d security_db"]
+      test: [ "CMD-SHELL", "pg_isready -U secuser -d security_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,7 +32,7 @@ services:
     networks:
       - security_net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,7 +50,7 @@ services:
     networks:
       - security_net
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,20 +61,23 @@ services:
     user: root
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=tcp://host.docker.internal:2375
+      - JENKINS_PLUGIN_CLI=/bin/jenkins-plugin-cli
+      - JENKINS_OPTS="--argumentsRealm.roles.user=admin --argumentsRealm.passwd.admin=admin --argumentsRealm.roles.admin=admin"
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8081:8080"
-      - "50000:50000"
     networks:
       - security_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/login" ]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
 
 networks:
   security_net:
