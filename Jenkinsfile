@@ -7,6 +7,8 @@ pipeline {
         DOCKER_CREDS = credentials('docker-registry-credentials')
         SONAR_TOKEN = credentials('sonar-token')
         APP_VERSION = "1.0.${BUILD_NUMBER}"
+        DEV_SERVER = credentials('dev-server-ssh')
+        PROD_SERVER = credentials('prod-server-ssh')
     }
     
     stages {
@@ -65,29 +67,66 @@ pipeline {
             when { branch 'develop' }
             steps {
                 script {
-                    sh """
-                        export APP_VERSION=${APP_VERSION}
-                        docker-compose -f docker-compose.prod.yml --env-file .env.prod down
-                        docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
-                    """
+                    sshagent(credentials: ['dev-server-ssh']) {
+                        sh """
+                            # Ensure deployment directory exists
+                            ssh -o StrictHostKeyChecking=no ${DEV_SERVER_USR}@${DEV_SERVER_PSW} 'mkdir -p ~/deployments'
+                            
+                            # Copy deployment files
+                            scp docker-compose.yml .env.dev ${DEV_SERVER_USR}@${DEV_SERVER_PSW}:~/deployments/
+                            
+                            # Execute deployment
+                            ssh -o StrictHostKeyChecking=no ${DEV_SERVER_USR}@${DEV_SERVER_PSW} '''
+                                cd ~/deployments
+                                echo "APP_VERSION=${APP_VERSION}" > .env
+                                docker login ${DOCKER_REGISTRY} -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}
+                                docker-compose pull
+                                docker-compose --env-file .env.dev up -d
+                                docker image prune -f
+                            '''
+                        """
+                    }
                 }
             }
         }
         
         stage('Deploy to Production') {
             when { branch 'main' }
-            environment {
-                PROD_SERVER = credentials('prod-server-ssh')
-            }
             steps {
                 script {
-                    sh """
-                        scp docker-compose.prod.yml .env.prod ${PROD_SERVER}:/opt/deployments/
-                        ssh ${PROD_SERVER} 'cd /opt/deployments && \
-                        export APP_VERSION=${APP_VERSION} && \
-                        docker-compose -f docker-compose.prod.yml --env-file .env.prod down && \
-                        docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d'
-                    """
+                    sshagent(credentials: ['prod-server-ssh']) {
+                        sh """
+                            # Ensure deployment directory exists
+                            ssh -o StrictHostKeyChecking=no ${PROD_SERVER_USR}@${PROD_SERVER_PSW} 'mkdir -p /opt/deployments'
+                            
+                            # Copy deployment files
+                            scp docker-compose.prod.yml .env.prod ${PROD_SERVER_USR}@${PROD_SERVER_PSW}:/opt/deployments/
+                            
+                            # Execute deployment
+                            ssh -o StrictHostKeyChecking=no ${PROD_SERVER_USR}@${PROD_SERVER_PSW} '''
+                                cd /opt/deployments
+                                echo "APP_VERSION=${APP_VERSION}" > .env
+                                docker login ${DOCKER_REGISTRY} -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}
+                                docker-compose -f docker-compose.prod.yml pull
+                                docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
+                                docker image prune -f
+                                
+                                # Wait for health checks
+                                echo "Waiting for application to be healthy..."
+                                timeout=300
+                                while [ $timeout -gt 0 ]; do
+                                    if curl -s http://localhost:8080/actuator/health | grep "UP"; then
+                                        echo "Application is healthy"
+                                        exit 0
+                                    fi
+                                    sleep 5
+                                    timeout=$((timeout-5))
+                                done
+                                echo "Health check timeout"
+                                exit 1
+                            '''
+                        """
+                    }
                 }
             }
         }

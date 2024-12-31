@@ -55,30 +55,6 @@ services:
       timeout: 5s
       retries: 5
 
-  jenkins:
-    image: jenkins/jenkins:lts-jdk17
-    container_name: security_jenkins
-    user: root
-    environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
-      - DOCKER_HOST=tcp://host.docker.internal:2375
-      - JENKINS_PLUGIN_CLI=/bin/jenkins-plugin-cli
-      - JENKINS_OPTS="--argumentsRealm.roles.user=admin --argumentsRealm.passwd.admin=admin --argumentsRealm.roles.admin=admin"
-    volumes:
-      - jenkins_home:/var/jenkins_home
-    ports:
-      - "8081:8080"
-    networks:
-      - security_net
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/login" ]
-      interval: 60s
-      timeout: 20s
-      retries: 5
-      start_period: 60s
-
 networks:
   security_net:
     driver: bridge
@@ -87,4 +63,3 @@ volumes:
   postgres_data:
   redis_data:
   mongo_data:
-  jenkins_home:
