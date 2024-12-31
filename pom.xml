@@ -56,13 +56,22 @@
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -83,6 +92,13 @@
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
             <version>1.6.3</version>
+        </dependency>
+        
+        <!-- P6Spy for SQL monitoring -->
+        <dependency>
+            <groupId>p6spy</groupId>
+            <artifactId>p6spy</artifactId>
+            <version>3.9.1</version>
         </dependency>
     </dependencies>
 

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: security_postgres
+    environment:
+      POSTGRES_DB: security_db
+      POSTGRES_USER: secuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - security_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secuser -d security_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: security_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - security_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:6
+    container_name: security_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - security_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: security_jenkins
+    user: root
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    networks:
+      - security_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  security_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  mongo_data:
+  jenkins_home:

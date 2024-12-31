@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: Simple-Security
+  
+  # PostgreSQL Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/security_db
+    username: secuser
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        generate_statistics: true
+        session.events.log.LOG_QUERIES_SLOWER_THAN_MS: 100
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD}
+      database: 0
+    
+    # MongoDB Configuration
+    mongodb:
+      uri: mongodb://mongoadmin:${MONGO_PASSWORD}@localhost:27017/security_logs?authSource=admin
+      database: security_logs
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG
+    vn.huuloc: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.hibernate.stat: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.redis.core.RedisTemplate: DEBUG
+    p6spy: INFO

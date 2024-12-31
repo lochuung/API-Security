@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  app:
+    image: simple-security:${APP_VERSION:-latest}
+    container_name: security_app
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=security_db
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - MONGO_HOST=mongodb
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - security_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      
+  postgres:
+    image: postgres:16-alpine
+    container_name: security_postgres
+    environment:
+      POSTGRES_DB: security_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - security_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d security_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: security_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - security_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:6
+    container_name: security_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - security_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  security_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local

@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: Simple-Security
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:security_db}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+  
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 10000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 10
+          min-idle: 5
+    
+    mongodb:
+      uri: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:security_logs}?authSource=admin
+      
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    accept-count: 100
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 2048
+
+logging:
+  level:
+    root: WARN
+    vn.huuloc: INFO
+  file:
+    name: /var/log/security-app/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
